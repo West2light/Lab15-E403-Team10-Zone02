@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Enterprise Readiness Review — Vinmec Maternity Chatbot</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --blue:    #1d4ed8;
+    --blue-lt: #dbeafe;
+    --blue-md: #3b82f6;
+    --teal:    #0f766e;
+    --teal-lt: #ccfbf1;
+    --amber:   #b45309;
+    --amber-lt:#fef3c7;
+    --red:     #dc2626;
+    --red-lt:  #fee2e2;
+    --green:   #15803d;
+    --green-lt:#dcfce7;
+    --gray:    #374151;
+    --gray-lt: #f3f4f6;
+    --border:  #e5e7eb;
+    --white:   #ffffff;
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #f8fafc;
+    color: var(--gray);
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  /* ── Navigation ── */
+  #nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 24px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  }
+  #nav .logo { font-weight: 700; font-size: 14px; color: var(--blue); }
+  #nav .slides-label { font-size: 13px; color: #6b7280; }
+  #nav .btns { display: flex; gap: 8px; }
+  #nav button {
+    padding: 6px 16px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--white); cursor: pointer; font-size: 13px; color: var(--gray);
+    transition: background .15s;
+  }
+  #nav button:hover { background: var(--gray-lt); }
+  #nav button.primary {
+    background: var(--blue); color: #fff; border-color: var(--blue);
+  }
+  #nav button.primary:hover { background: #1e40af; }
+
+  /* ── Slide container ── */
+  #deck {
+    margin-top: 53px;
+    height: calc(100vh - 53px);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .slide {
+    display: none;
+    height: 100%;
+    overflow-y: auto;
+    padding: 40px 60px 60px;
+    animation: fadeIn .25s ease;
+  }
+  .slide.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── Progress bar ── */
+  #progress {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 100;
+    background: var(--white); border-top: 1px solid var(--border);
+    padding: 8px 24px; display: flex; align-items: center; gap: 16px;
+  }
+  #progress-bar-wrap {
+    flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden;
+  }
+  #progress-bar { height: 100%; background: var(--blue); transition: width .3s; }
+  #progress-text { font-size: 12px; color: #9ca3af; white-space: nowrap; }
+
+  /* ── Keyboard hint ── */
+  #hint {
+    position: fixed; bottom: 36px; right: 24px; z-index: 101;
+    font-size: 11px; color: #9ca3af;
+  }
+
+  /* ══════════════════════════════════
+     SLIDE 0 — Title
+  ══════════════════════════════════ */
+  .title-slide {
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+    padding: 60px 80px;
+  }
+  .title-slide.active {
+    display: flex;
+  }
+  .title-slide .eyebrow {
+    font-size: 12px; font-weight: 600; letter-spacing: .12em;
+    color: var(--blue); text-transform: uppercase; margin-bottom: 16px;
+  }
+  .title-slide h1 {
+    font-size: 44px; font-weight: 800; color: #111827; line-height: 1.15;
+    max-width: 780px; margin-bottom: 16px;
+  }
+  .title-slide h1 span { color: var(--blue); }
+  .title-slide .subtitle {
+    font-size: 18px; color: #4b5563; margin-bottom: 40px; max-width: 600px;
+  }
+  .title-meta {
+    display: flex; gap: 32px; flex-wrap: wrap;
+  }
+  .meta-item { display: flex; flex-direction: column; }
+  .meta-item .label { font-size: 11px; color: #9ca3af; text-transform: uppercase; letter-spacing: .08em; }
+  .meta-item .value { font-size: 15px; font-weight: 600; color: var(--gray); margin-top: 2px; }
+  .team-badges {
+    margin-top: 32px; display: flex; gap: 10px; flex-wrap: wrap;
+  }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 20px;
+    font-size: 13px; font-weight: 500;
+  }
+  .badge-blue  { background: var(--blue-lt); color: var(--blue); }
+  .badge-teal  { background: var(--teal-lt); color: var(--teal); }
+  .badge-amber { background: var(--amber-lt); color: var(--amber); }
+  .badge-red   { background: var(--red-lt); color: var(--red); }
+  .badge-green { background: var(--green-lt); color: var(--green); }
+  .badge-gray  { background: var(--gray-lt); color: var(--gray); }
+
+  /* ══ Shared slide layout ══ */
+  .slide-header { margin-bottom: 28px; }
+  .slide-header .slide-num {
+    font-size: 11px; font-weight: 700; letter-spacing: .12em;
+    color: var(--blue); text-transform: uppercase; margin-bottom: 6px;
+  }
+  .slide-header h2 {
+    font-size: 30px; font-weight: 800; color: #111827; line-height: 1.2;
+  }
+  .slide-header .desc {
+    font-size: 15px; color: #6b7280; margin-top: 6px;
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--white); border: 1px solid var(--border);
+    border-radius: 12px; padding: 20px 24px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.05);
+  }
+  .card-title {
+    font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .1em; margin-bottom: 10px;
+  }
+
+  /* ── Grid helpers ── */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+  .grid-1-2 { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; }
+
+  /* ── KPI strip ── */
+  .kpi-strip { display: flex; gap: 12px; margin-bottom: 20px; }
+  .kpi {
+    flex: 1; background: var(--white); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  }
+  .kpi .kpi-label { font-size: 11px; color: #6b7280; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; }
+  .kpi .kpi-value { font-size: 26px; font-weight: 800; color: #111827; }
+  .kpi .kpi-sub   { font-size: 12px; color: #9ca3af; }
+
+  /* ── Tables ── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    background: var(--gray-lt); text-align: left;
+    padding: 9px 12px; font-weight: 600; font-size: 12px;
+    color: #374151; border-bottom: 1px solid var(--border);
+  }
+  td { padding: 9px 12px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fafafa; }
+
+  /* ── Pill / tag ── */
+  .pill {
+    display: inline-block; padding: 2px 10px; border-radius: 12px;
+    font-size: 11px; font-weight: 600;
+  }
+  .pill-blue  { background: var(--blue-lt); color: var(--blue); }
+  .pill-green { background: var(--green-lt); color: var(--green); }
+  .pill-red   { background: var(--red-lt); color: var(--red); }
+  .pill-amber { background: var(--amber-lt); color: var(--amber); }
+  .pill-teal  { background: var(--teal-lt); color: var(--teal); }
+  .pill-gray  { background: var(--gray-lt); color: #4b5563; }
+
+  /* ── Numbered list ── */
+  .num-list { display: flex; flex-direction: column; gap: 12px; }
+  .num-item { display: flex; gap: 14px; align-items: flex-start; }
+  .num-circle {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--blue-lt); color: var(--blue);
+    font-size: 13px; font-weight: 700;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    margin-top: 1px;
+  }
+  .num-item .content .title { font-size: 14px; font-weight: 600; color: #111827; }
+  .num-item .content .sub   { font-size: 13px; color: #6b7280; margin-top: 2px; }
+
+  /* ── Icon bullets ── */
+  .icon-list { display: flex; flex-direction: column; gap: 10px; }
+  .icon-row  { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; }
+  .icon-row .icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+
+  /* ── Divider ── */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 16px 0; }
+
+  /* ── Flow diagram (CSS) ── */
+  .flow { display: flex; align-items: center; gap: 0; flex-wrap: nowrap; overflow-x: auto; padding: 8px 0; }
+  .flow-box {
+    flex-shrink: 0;
+    background: var(--white); border: 1px solid var(--border); border-radius: 8px;
+    padding: 10px 14px; font-size: 12px; font-weight: 500; text-align: center;
+    min-width: 90px; box-shadow: 0 1px 2px rgba(0,0,0,.04);
+  }
+  .flow-box.blue  { background: var(--blue-lt); border-color: #93c5fd; color: var(--blue); }
+  .flow-box.green { background: var(--green-lt); border-color: #86efac; color: var(--green); }
+  .flow-box.amber { background: var(--amber-lt); border-color: #fcd34d; color: var(--amber); }
+  .flow-box.red   { background: var(--red-lt);   border-color: #fca5a5; color: var(--red); }
+  .flow-arrow { font-size: 18px; color: #9ca3af; padding: 0 4px; flex-shrink: 0; }
+
+  /* ── Strategy card ── */
+  .strategy { display: flex; flex-direction: column; gap: 4px; }
+  .strategy .s-title { font-weight: 700; font-size: 14px; }
+  .strategy .s-tag   { font-size: 11px; }
+  .strategy .s-body  { font-size: 13px; color: #4b5563; line-height: 1.5; }
+
+  /* ── Scenario boxes (Reliability) ── */
+  .scenario {
+    border-left: 4px solid; padding: 14px 16px; border-radius: 0 8px 8px 0;
+    background: var(--white); margin-bottom: 12px;
+  }
+  .scenario.red    { border-color: var(--red);   background: #fff8f8; }
+  .scenario.amber  { border-color: var(--amber); background: #fffbf0; }
+  .scenario.blue   { border-color: var(--blue);  background: #f5f8ff; }
+  .scenario .sc-title { font-weight: 700; font-size: 14px; margin-bottom: 6px; }
+  .scenario .sc-row   { display: flex; gap: 24px; font-size: 13px; flex-wrap: wrap; }
+  .scenario .sc-col   { display: flex; flex-direction: column; gap: 2px; }
+  .scenario .sc-label { font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: #9ca3af; }
+
+  /* ── Track slide ── */
+  .track-box {
+    border: 2px solid; border-radius: 12px; padding: 20px 22px;
+    position: relative; overflow: hidden;
+  }
+  .track-box.selected { border-color: var(--blue); background: #f0f7ff; }
+  .track-box.other    { border-color: var(--border); background: var(--white); opacity: .6; }
+  .track-box .check {
+    position: absolute; top: 14px; right: 14px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--blue); color: #fff;
+    font-size: 12px; display: flex; align-items: center; justify-content: center;
+  }
+
+  /* ── Cost highlight ── */
+  .cost-highlight {
+    background: linear-gradient(135deg, #eff6ff, #f0fdf4);
+    border: 1px solid #bfdbfe; border-radius: 12px; padding: 20px 24px;
+  }
+  .cost-big { font-size: 36px; font-weight: 800; color: var(--blue); }
+  .cost-label { font-size: 13px; color: #6b7280; margin-top: 4px; }
+
+  /* responsive hint */
+  @media (max-width: 900px) {
+    .slide { padding: 24px 20px 60px; }
+    .grid-2, .grid-3, .grid-2-1, .grid-1-2 { grid-template-columns: 1fr; }
+    .kpi-strip { flex-wrap: wrap; }
+    .title-slide h1 { font-size: 28px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Navigation ── -->
+<div id="nav">
+  <div class="logo">Vinmec · Enterprise Readiness Review</div>
+  <div class="slides-label" id="slide-label">Slide 1 / 7</div>
+  <div class="btns">
+    <button onclick="prev()">← Trước</button>
+    <button class="primary" onclick="next()">Tiếp →</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     DECK
+══════════════════════════════════════════════════ -->
+<div id="deck">
+
+<!-- ─────────────── SLIDE 1: Title ─────────────── -->
+<div class="slide title-slide active">
+  <div class="eyebrow">AICB-P1 · Ngày tổng kết Phase 1 · E403 – Team 06</div>
+  <h1>AI Copilot tư vấn gói<br><span>thai sản Vinmec</span></h1>
+  <div class="subtitle">Enterprise Readiness Review — từ prototype đến production</div>
+
+  <div class="title-meta">
+    <div class="meta-item">
+      <span class="label">Sản phẩm</span>
+      <span class="value">Vinmec Maternity Chatbot</span>
+    </div>
+    <div class="meta-item">
+      <span class="label">Stack</span>
+      <span class="value">FastAPI · GPT-4o-mini · OpenAI Tool Calling</span>
+    </div>
+    <div class="meta-item">
+      <span class="label">Ngày</span>
+      <span class="value">22 / 04 / 2026</span>
+    </div>
+  </div>
+
+  <div class="team-badges">
+    <div class="badge badge-blue">👩‍💼 Giang — Product Lead & Presenter</div>
+    <div class="badge badge-teal">🏗️ Trung — Architect</div>
+    <div class="badge badge-amber">💰 Dũng — Cost Lead</div>
+    <div class="badge badge-red">🛡️ Đông — Reliability</div>
+  </div>
+</div>
+
+<!-- ─────────────── SLIDE 2: Project Overview ─────────────── -->
+<div class="slide">
+  <div class="slide-header">
+    <div class="slide-num">Slide 02 — Project Overview</div>
+    <h2>Bài toán & Giải pháp</h2>
+    <div class="desc">Vinmec Maternity Chatbot — AI tư vấn gói thai sản 24/7</div>
+  </div>
+
+  <div class="kpi-strip">
+    <div class="kpi">
+      <span class="kpi-label">Người dùng chính</span>
+      <span class="kpi-value">Thai phụ</span>
+      <span class="kpi-sub">& gia đình, tìm thông tin chi phí, chính sách, gói sinh</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">Model</span>
+      <span class="kpi-value">GPT-4o-mini</span>
+      <span class="kpi-sub">Tool calling · JSON output · temp 0.2</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">Tools</span>
+      <span class="kpi-value">4</span>
+      <span class="kpi-sub">search KB · get policy · classify · log feedback</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">Max iterations</span>
+      <span class="kpi-value">4</span>
+      <span class="kpi-sub">per request, có fallback warning</span>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title" style="color:var(--red)">Pain point</div>
+      <div class="num-list">
+        <div class="num-item">
+          <div class="num-circle" style="background:#fee2e2;color:var(--red)">1</div>
+          <div class="content">
+            <div class="title">Phải gọi hotline hoặc đến trực tiếp</div>
+            <div class="sub">Chỉ hoạt động giờ hành chính, chờ lâu, thông tin phân mảnh</div>
+          </div>
+        </div>
+        <div class="num-item">
+          <div class="num-circle" style="background:#fee2e2;color:var(--red)">2</div>
+          <div class="content">
+            <div class="title">Gói dịch vụ phức tạp, giá thay đổi</div>
+            <div class="sub">Gói 27 tuần, 36 tuần, bảo hiểm AIA, thủ tục nhập viện...</div>
+          </div>
+        </div>
+        <div class="num-item">
+          <div class="num-circle" style="background:#fee2e2;color:var(--red)">3</div>
+          <div class="content">
+            <div class="title">CSKH quá tải câu hỏi lặp lại</div>
+            <div class="sub">Không có thời gian xử lý ca tư vấn chuyên sâu</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="color:var(--green)">Giải pháp</div>
+      <div class="num-list">
+        <div class="num-item">
+          <div class="num-circle">1</div>
+          <div class="content">
+            <div class="title">Agent loop với 4 tools chuyên biệt</div>
+            <div class="sub">Tự động gọi KB → tổng hợp → trả JSON có cấu trúc</div>
+          </div>
+        </div>
+        <div class="num-item">
+          <div class="num-circle">2</div>
+          <div class="content">
+            <div class="title">Strict RAG — không bịa thông tin</div>
+            <div class="sub">Precision &gt; Recall. Không có source → không trả lời</div>
+          </div>
+        </div>
+        <div class="num-item">
+          <div class="num-circle">3</div>
+          <div class="content">
+            <div class="title">Human handoff khi ra ngoài phạm vi</div>
+            <div class="sub">Câu hỏi y tế → redirect bác sĩ. Feedback → log review</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div class="card-title" style="color:var(--blue)">Agent flow</div>
+    <div class="flow">
+      <div class="flow-box blue">User hỏi</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">classify_request_scope</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">search_knowledge_base</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">get_policy_detail</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box blue">GPT tổng hợp</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box green">JSON response</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box green">Frontend render</div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────── SLIDE 3: Enterprise Context ─────────────── -->
+<div class="slide">
+  <div class="slide-header">
+    <div class="slide-num">Slide 03 — Enterprise Context & Deployment Choice</div>
+    <h2>Bối cảnh enterprise & Kiến trúc triển khai</h2>
+    <div class="desc">Tại sao deploy demo ≠ deploy production?</div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:16px">
+    <div class="card">
+      <div class="card-title" style="color:var(--red)">3 ràng buộc enterprise lớn nhất</div>
+      <div class="num-list">
+        <div class="num-item">
+          <div class="num-circle" style="background:#fee2e2;color:var(--red)">1</div>
+          <div class="content">
+            <div class="title">Healthcare Data Compliance</div>
+            <div class="sub">Dữ liệu bệnh nhân (tên, SĐT, ngày sinh, câu hỏi sức khỏe) chịu ràng buộc Thông tư 43/2018. Không được rời khỏi hạ tầng nội bộ Vinmec.</div>
+          </div>
+        </div>
+        <div class="num-item">
+          <div class="num-circle" style="background:#fee2e2;color:var(--red)">2</div>
+          <div class="content">
+            <div class="title">Audit Trail bắt buộc</div>
+            <div class="sub">Mọi booking và câu trả lời về giá/chính sách phải được log đầy đủ để review. Hiện đã có feedback_log.jsonl nhưng chưa đủ chuẩn audit.</div>
+          </div>
+        </div>
+        <div class="num-item">
+          <div class="num-circle" style="background:#fee2e2;color:var(--red)">3</div>
+          <div class="content">
+            <div class="title">Zero Hallucination về số liệu</div>
+            <div class="sub">Sai giá 10 triệu → khiếu nại, rủi ro pháp lý. Ngưỡng chịu đựng: 0% với dữ liệu số (giá, %, tuần thai).</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="color:var(--blue)">Mô hình triển khai đề xuất: Hybrid</div>
+      <div style="margin-bottom:14px">
+        <div class="flow" style="flex-direction:column;align-items:stretch;gap:8px">
+          <div class="flow-box green" style="text-align:left;padding:12px 16px">
+            <strong>On-Premise (Vinmec internal)</strong><br>
+            <span style="font-size:11px;font-weight:400">Knowledge Base (JSONL) · Booking DB · Feedback log · Session data · Audit trail</span>
+          </div>
+          <div style="text-align:center;color:#9ca3af;font-size:12px">↕ Sanitized query (không có PII)</div>
+          <div class="flow-box blue" style="text-align:left;padding:12px 16px">
+            <strong>Cloud (OpenAI API)</strong><br>
+            <span style="font-size:11px;font-weight:400">GPT-4o-mini inference · Tool calling · JSON generation</span>
+          </div>
+        </div>
+      </div>
+      <div class="icon-list">
+        <div class="icon-row"><div class="icon">✅</div><div><strong>Lý do 1:</strong> KB, booking, feedback lưu on-prem → đảm bảo data sovereignty</div></div>
+        <div class="icon-row"><div class="icon">✅</div><div><strong>Lý do 2:</strong> LLM cloud nhận câu hỏi đã sanitize → không gửi PII ra ngoài</div></div>
+        <div class="icon-row"><div class="icon">⚠️</div><div><strong>Gap hiện tại:</strong> CORS mở <code>*</code>, không có auth, không có encryption at rest</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="color:var(--gray)">So sánh các lựa chọn triển khai</div>
+    <table>
+      <tr>
+        <th>Tiêu chí</th>
+        <th>Cloud-only</th>
+        <th style="background:#eff6ff;color:var(--blue)">Hybrid ← Chọn</th>
+        <th>On-prem-only</th>
+      </tr>
+      <tr>
+        <td>Data sovereignty</td>
+        <td><span class="pill pill-red">Rủi ro cao</span></td>
+        <td><span class="pill pill-green">An toàn</span></td>
+        <td><span class="pill pill-green">An toàn</span></td>
+      </tr>
+      <tr>
+        <td>Chi phí setup</td>
+        <td><span class="pill pill-green">Thấp</span></td>
+        <td><span class="pill pill-amber">Trung bình</span></td>
+        <td><span class="pill pill-red">Cao</span></td>
+      </tr>
+      <tr>
+        <td>LLM quality</td>
+        <td><span class="pill pill-green">Cao</span></td>
+        <td><span class="pill pill-green">Cao</span></td>
+        <td><span class="pill pill-amber">Phụ thuộc model nội bộ</span></td>
+      </tr>
+      <tr>
+        <td>Compliance y tế</td>
+        <td><span class="pill pill-red">Khó</span></td>
+        <td><span class="pill pill-green">Đáp ứng được</span></td>
+        <td><span class="pill pill-green">Tốt nhất</span></td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- ─────────────── SLIDE 4: Cost Analysis ─────────────── -->
+<div class="slide">
+  <div class="slide-header">
+    <div class="slide-num">Slide 04 — Cost Analysis</div>
+    <h2>Phân tích chi phí — MVP & Growth</h2>
+    <div class="desc">GPT-4o-mini: $0.15/1M input · $0.075/1M cached · $0.60/1M output</div>
+  </div>
+
+  <div class="kpi-strip">
+    <div class="kpi">
+      <span class="kpi-label">Token cost / ngày (MVP)</span>
+      <span class="kpi-value" style="color:var(--blue)">~$0.69</span>
+      <span class="kpi-sub">500 users · 3 req/user · 1.450 input + 300 output tokens</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">Token cost / tháng</span>
+      <span class="kpi-value" style="color:var(--blue)">~$21</span>
+      <span class="kpi-sub">Đã tính prompt caching (~55% cached)</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">Tổng cost / tháng (MVP)</span>
+      <span class="kpi-value" style="color:var(--teal)">~$50</span>
+      <span class="kpi-sub">LLM + compute + storage + monitoring</span>
+    </div>
+    <div class="kpi">
+      <span class="kpi-label">ROI thực tế (1.000 session/ngày)</span>
+      <span class="kpi-value" style="color:var(--green)">+$190</span>
+      <span class="kpi-sub">Net/ngày sau khi trừ $50 cost</span>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title" style="color:var(--blue)">Cấu trúc token cost / request</div>
+      <table>
+        <tr>
+          <th>Loại token</th>
+          <th>Token</th>
+          <th>Đơn giá</th>
+          <th>Cost/1.500 req</th>
+        </tr>
+        <tr>
+          <td>Input (fresh ~45%)</td>
+          <td>~652 tokens</td>
+          <td>$0.15/1M</td>
+          <td>$0.15/ngày</td>
+        </tr>
+        <tr>
+          <td><span class="pill pill-green">Cached input ~55%</span></td>
+          <td>~798 tokens</td>
+          <td>$0.075/1M</td>
+          <td>$0.09/ngày</td>
+        </tr>
+        <tr>
+          <td><strong>Output</strong></td>
+          <td>~300 tokens</td>
+          <td>$0.60/1M</td>
+          <td><strong>$0.27/ngày</strong></td>
+        </tr>
+        <tr style="background:#f0f9ff">
+          <td colspan="3"><strong>Tổng token</strong></td>
+          <td><strong>$0.51/ngày</strong></td>
+        </tr>
+      </table>
+      <div style="margin-top:10px;font-size:12px;color:#6b7280">
+        💡 System prompt ~800 tokens được cache tự động → tiết kiệm ~$0.09/ngày so với tính full input price
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title" style="color:var(--gray)">Tất cả các lớp cost</div>
+      <table>
+        <tr>
+          <th>Lớp cost</th>
+          <th>MVP/tháng</th>
+          <th>5x scale</th>
+        </tr>
+        <tr>
+          <td>LLM API (GPT-4o-mini)</td>
+          <td>~$21</td>
+          <td>~$105</td>
+        </tr>
+        <tr>
+          <td>Compute (VPS/cloud)</td>
+          <td>$15–30</td>
+          <td>$60–100</td>
+        </tr>
+        <tr>
+          <td>Storage (logs, bookings)</td>
+          <td>$2–5</td>
+          <td>$8–15</td>
+        </tr>
+        <tr>
+          <td>Human review (feedback)</td>
+          <td>~8h nhân sự</td>
+          <td>~20h nhân sự</td>
+        </tr>
+        <tr>
+          <td>Monitoring/logging</td>
+          <td>$5–10</td>
+          <td>$15–25</td>
+        </tr>
+        <tr style="background:#f0f9ff">
+          <td><strong>Tổng ước tính</strong></td>
+          <td><strong>~$50–65</strong></td>
+          <td><strong>~$190–245</strong></td>
+        </tr>
+      </table>
+      <div style="margin-top:10px;padding:10px 12px;background:var(--amber-lt);border-radius:8px;font-size:12px">
+        ⚠️ <strong>Hidden cost dễ quên nhất:</strong> Nhân sự review feedback_log và cập nhật KB khi Vinmec thay đổi gói sinh (tối thiểu 2 tuần/lần)
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div class="card-title" style="color:var(--gray)">ROI 3 kịch bản</div>
+    <table>
+      <tr>
+        <th>Kịch bản</th>
+        <th>Assumption</th>
+        <th>Cost/ngày</th>
+        <th>Benefit/ngày</th>
+        <th>Net</th>
+      </tr>
+      <tr>
+        <td><span class="pill pill-amber">Conservative</span></td>
+        <td>200 sessions/ngày · containment 50%</td>
+        <td>$10</td>
+        <td>Tiết kiệm 8h CSKH + 5 leads</td>
+        <td style="color:var(--green);font-weight:700">+$20</td>
+      </tr>
+      <tr>
+        <td><span class="pill pill-blue">Realistic</span></td>
+        <td>1.000 sessions/ngày · containment 75%</td>
+        <td>$50</td>
+        <td>Tiết kiệm 60h CSKH + 30 leads hẹn lịch</td>
+        <td style="color:var(--green);font-weight:700">+$190</td>
+      </tr>
+      <tr>
+        <td><span class="pill pill-green">Optimistic</span></td>
+        <td>3.000 sessions/ngày · App/Zalo · 90%</td>
+        <td>$150</td>
+        <td>Giảm tải 200h + tăng 5% chốt gói sinh</td>
+        <td style="color:var(--green);font-weight:700">+$650</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+<!-- ─────────────── SLIDE 5: Cost Optimization ─────────────── -->
+<div class="slide">
+  <div class="slide-header">
+    <div class="slide-num">Slide 05 — Cost Optimization</div>
+    <h2>Kế hoạch tối ưu chi phí</h2>
+    <div class="desc">3 chiến lược được chọn — phân loại theo thời điểm áp dụng</div>
+  </div>
+
+  <div class="grid-3" style="margin-bottom:16px">
+    <!-- Strategy 1 -->
+    <div class="card" style="border-top:3px solid var(--green)">
+      <div class="strategy">
+        <div class="s-title">Prompt Compression</div>
+        <div class="s-tag"><span class="pill pill-green">Làm ngay — tuần 1</span></div>
+        <hr class="divider">
+        <div class="s-body">
+          <div class="icon-row" style="margin-bottom:6px"><div class="icon">💡</div><div>System prompt hiện tại <strong>~800 tokens</strong>, gửi lại mỗi call</div></div>
+          <div class="icon-row" style="margin-bottom:6px"><div class="icon">✂️</div><div>Rút gọn còn <strong>~400 tokens</strong> bằng cách bỏ ví dụ thừa</div></div>
+          <div class="icon-row" style="margin-bottom:6px"><div class="icon">📉</div><div>Tiết kiệm ~27% input token cost → ~$5/tháng ở MVP</div></div>
+          <div class="icon-row"><div class="icon">⚠️</div><div>Trade-off: cần test kỹ để không mất instruction quan trọng</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Strategy 2 -->
+    <div class="card" style="border-top:3px solid var(--blue)">
+      <div class="strategy">
+        <div class="s-title">Semantic Caching</div>
+        <div class="s-tag"><span class="pill pill-blue">Tháng 1–2 sau launch</span></div>
+        <hr class="divider">
+        <div class="s-body">
+          <div class="icon-row" style="margin-bottom:6px"><div class="icon">💡</div><div>~30–40% câu hỏi là FAQ lặp lại (giá gói, thủ tục nhập viện)</div></div>
+          <div class="icon-row" style="margin-bottom:6px"><div class="icon">🗄️</div><div>Cache câu trả lời theo vector similarity → skip LLM call</div></div>
+          <div class="icon-row" style="margin-bottom:6px"><div class="icon">📉</div><div>Giảm 30–40% LLM calls → ~$6–8/tháng tiết kiệm ở MVP</div></div>
+          <div class="icon-row"><div class="icon">⚠️</div><div>Trade-off: cần vector DB (~$10/tháng thêm), cache invalidation khi KB thay đổi</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Strategy 3 -->
+    <div class="card" style="border-top:3px solid var(--amber)">
+      <div class="strategy">
+        <div class="s-title">Model Routing</div>
+        <div class="s-tag"><span class="pill pill-amber">Khi volume &gt; 5.000 req/ngày</span></div>
+        <hr class="divider">
+        <div class="s-body">
+          <div class="icon-row" style="margin-bottom:6px"><div class="icon">💡</div><div>Câu đơn giản (địa chỉ, giờ làm việc) → rule-based, không cần LLM</div></div>
+          <div class="icon-row" style="margin-bottom:6px"><div class="icon">🔀</div><div>Câu phức tạp (so sánh gói, bảo hiểm) → GPT-4o-mini</div></div>
+          <div class="icon-row" style="margin-bottom:6px"><div class="icon">📉</div><div>Tiết kiệm 15–20% cost khi volume đủ lớn để justify thêm classifier</div></div>
+          <div class="icon-row"><div class="icon">⚠️</div><div>Trade-off: cần train intent classifier, tăng độ phức tạp hệ thống</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title" style="color:var(--gray)">Cost driver lớn nhất & Hidden costs cần kiểm soát</div>
+    <div class="grid-2">
+      <div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">Cost driver theo lớp (MVP)</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+              <span>Output token ($0.60/1M)</span><span style="font-weight:700;color:var(--red)">39%</span>
+            </div>
+            <div style="height:8px;background:var(--border);border-radius:4px"><div style="width:39%;height:100%;background:var(--red);border-radius:4px"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+              <span>Compute (VPS)</span><span style="font-weight:700;color:var(--blue)">33%</span>
+            </div>
+            <div style="height:8px;background:var(--border);border-radius:4px"><div style="width:33%;height:100%;background:var(--blue);border-radius:4px"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+              <span>Input token (fresh)</span><span style="font-weight:700;color:var(--amber)">22%</span>
+            </div>
+            <div style="height:8px;background:var(--border);border-radius:4px"><div style="width:22%;height:100%;background:var(--amber);border-radius:4px"></div></div>
+          </div>
+          <div>
+            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+              <span>Cached input + storage + monitoring</span><span style="font-weight:700;color:var(--gray)">6%</span>
+            </div>
+            <div style="height:8px;background:var(--border);border-radius:4px"><div style="width:6%;height:100%;background:#9ca3af;border-radius:4px"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="icon-list">
+        <div style="font-size:13px;font-weight:600;margin-bottom:8px">Hidden costs dễ bị quên</div>
+        <div class="icon-row"><div class="icon">👩‍💻</div><div>Nhân sự review feedback_log định kỳ (~8h/tháng)</div></div>
+        <div class="icon-row"><div class="icon">📝</div><div>Cập nhật KB khi Vinmec thay đổi gói sinh (tối thiểu 2 tuần/lần)</div></div>
+        <div class="icon-row"><div class="icon">🧪</div><div>Testing sau mỗi lần update KB để kiểm tra regression</div></div>
+        <div class="icon-row"><div class="icon">🔒</div><div>Security hardening (auth, encryption at rest) cho production</div></div>
+        <div class="icon-row"><div class="icon">📊</div><div>Monitoring dashboard setup (chưa có trong prototype)</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─────────────── SLIDE 6: Reliability ─────────────── -->
+<div class="slide">
+  <div class="slide-header">
+    <div class="slide-num">Slide 06 — Reliability & Scaling</div>
+    <h2>Kế hoạch vận hành & Xử lý sự cố</h2>
+    <div class="desc">3 tình huống nguy hiểm nhất & phương án fallback</div>
+  </div>
+
+  <div style="margin-bottom:16px">
+    <div class="scenario red">
+      <div class="sc-title">🔴 Tình huống 1: OpenAI API timeout / lỗi</div>
+      <div class="sc-row">
+        <div class="sc-col">
+          <span class="sc-label">Tác động</span>
+          <span>Người dùng nhận warning text trống — rủi ro cao nếu đang hỏi thông tin khẩn</span>
+        </div>
+        <div class="sc-col">
+          <span class="sc-label">Phản ứng ngắn hạn</span>
+          <span>Hiển thị friendly error + danh sách 3 FAQ phổ biến nhất từ KB tĩnh</span>
+        </div>
+        <div class="sc-col">
+          <span class="sc-label">Giải pháp dài hạn</span>
+          <span>Circuit breaker pattern · fallback rule-based flow · alert oncall</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="scenario amber">
+      <div class="sc-title">🟡 Tình huống 2: Traffic tăng đột biến (Vinmec chạy quảng cáo)</div>
+      <div class="sc-row">
+        <div class="sc-col">
+          <span class="sc-label">Tác động</span>
+          <span>Response chậm, queue đầy, user bỏ đi — mất leads tiềm năng</span>
+        </div>
+        <div class="sc-col">
+          <span class="sc-label">Phản ứng ngắn hạn</span>
+          <span>Rate limit per session · queue request · ưu tiên câu hỏi in-progress</span>
+        </div>
+        <div class="sc-col">
+          <span class="sc-label">Giải pháp dài hạn</span>
+          <span>Auto-scaling compute · async processing cho non-urgent queries · semantic cache</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="scenario blue">
+      <div class="sc-title">🔵 Tình huống 3: Response sai về y tế / giá gói sinh</div>
+      <div class="sc-row">
+        <div class="sc-col">
+          <span class="sc-label">Tác động</span>
+          <span>Nguy hiểm nhất — bệnh nhân làm theo tư vấn sai, rủi ro pháp lý</span>
+        </div>
+        <div class="sc-col">
+          <span class="sc-label">Phản ứng ngắn hạn</span>
+          <span>classify_request_scope từ chối y tế · precision mode không trả lời khi thiếu source</span>
+        </div>
+        <div class="sc-col">
+          <span class="sc-label">Giải pháp dài hạn</span>
+          <span>Human escalation flag · alert khi hallucination rate &gt; 0% · KB versioning</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title" style="color:var(--blue)">Metrics cần monitor</div>
+      <table>
+        <tr><th>Metric</th><th>Target</th><th>Red flag</th></tr>
+        <tr><td>RAG Faithfulness</td><td>≥ 95%</td><td><span class="pill pill-red">&lt; 85%</span></td></tr>
+        <tr><td>Intent Classification</td><td>≥ 90%</td><td><span class="pill pill-red">&lt; 75%</span></td></tr>
+        <tr><td>Human Handoff Rate</td><td>≤ 15%</td><td><span class="pill pill-red">&gt; 30%</span></td></tr>
+        <tr><td>Hallucination (số liệu)</td><td><strong>0%</strong></td><td><span class="pill pill-red">&gt; 2% → dừng khẩn</span></td></tr>
+        <tr><td>Avg response time</td><td>&lt; 3s</td><td><span class="pill pill-amber">&gt; 6s</span></td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color:var(--teal)">Fallback proposal</div>
+      <div class="num-list">
+        <div class="num-item">
+          <div class="num-circle" style="background:var(--teal-lt);color:var(--teal)">L1</div>
+          <div class="content">
+            <div class="title">Semantic cache hit → trả kết quả cache</div>
+            <div class="sub">Không cần LLM call, response &lt; 100ms</div>
+          </div>
+        </div>
+        <div class="num-item">
+          <div class="num-circle" style="background:var(--teal-lt);color:var(--teal)">L2</div>
+          <div class="content">
+            <div class="title">LLM call bình thường với retry x2</div>
+            <div class="sub">Timeout 8s · retry 1 lần trước khi fallback</div>
+          </div>
+        </div>
+        <div class="num-item">
+          <div class="num-circle" style="background:var(--teal-lt);color:var(--teal)">L3</div>
+          <div class="content">
+            <div class="title">Rule-based FAQ tĩnh từ KB local</div>
+            <div class="sub">Top 10 câu hỏi phổ biến nhất — luôn available</div>
+          </div>
+        </div>
+        <div class="num-item">
+          <div class="num-circle" style="background:var(--red-lt);color:var(--red)">L4</div>
+          <div class="content">
+            <div class="title">Human handoff + số hotline Vinmec</div>
+            <div class="sub">1900 232 389 — 24/7 cuối cùng luôn available</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+</div><!-- end #deck -->
+
+<!-- ── Progress bar ── -->
+<div id="progress">
+  <div id="progress-bar-wrap"><div id="progress-bar" style="width:16.7%"></div></div>
+  <div id="progress-text">1 / 6</div>
+</div>
+
+<div id="hint">← → hoặc Space để chuyển slide</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  let cur = 0;
+  const total = slides.length;
+
+  function show(n) {
+    slides[cur].classList.remove('active');
+    cur = Math.max(0, Math.min(n, total - 1));
+    slides[cur].classList.add('active');
+    slides[cur].scrollTop = 0;
+    document.getElementById('slide-label').textContent = `Slide ${cur + 1} / ${total}`;
+    document.getElementById('progress-text').textContent = `${cur + 1} / ${total}`;
+    document.getElementById('progress-bar').style.width = `${((cur + 1) / total) * 100}%`;
+  }
+
+  function next() { show(cur + 1); }
+  function prev() { show(cur - 1); }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); next(); }
+    if (e.key === 'ArrowLeft')                   { e.preventDefault(); prev(); }
+  });
+</script>
+</body>
+</html>
